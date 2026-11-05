@@ -1,0 +1,34 @@
+TANGHULU KITCHEN
+
+Online library: https://interactive-cooking-lessons.swiftfield10.chatgpt.site/
+Direct lesson: https://interactive-cooking-lessons.swiftfield10.chatgpt.site/Tanghulu.html
+
+Offline: keep Tanghulu.html, Library.html and the assets folder together.
+Double-click Tanghulu.html and use Edge or Chrome. No installation needed.
+If you downloaded the ZIP, extract it first.
+
+1. Enter your class size and group count (up to 60 students, 8 groups,
+   and any distribution of students per group).
+2. Number the students within each group.
+3. You operate the screen. The highlighted student chooses and directs.
+4. Watching groups follow the prompt: mime, name fruits or answer.
+5. Each group member gets a wash, dry and skewer turn.
+6. You demonstrate coating and cooling, then select Next group.
+
+Mouse/touch drag works. Large action buttons provide an easier alternative.
+Sound starts off. Turn it on for short chimes. Full screen enlarges the lesson.
+Progress lasts only while this tab is open. No personal information is stored.
+
+An adult handles real sharp skewers, hot syrup and dipping.
+The onscreen heating/cooling animations are demonstrations, not cooking timers.
+See Teacher guide & recipe notes inside the lesson.
+
+Three.js is bundled under its MIT license in assets/three-LICENSE.txt.
+
+FRUIT & SCREEN UPDATE
+Choose from 14 fruits, repeat any fruit, or add a custom fruit name and color.
+The limit applies only to a stick: select 4 or 5 pieces before forming groups.
+After washing the initial fruit, click another fruit to add it, or use Add another fruit.
+Wash and dry extra fruit before skewering it. Fruit stays in the prepared tray.
+A full stick starts another stick. Coating and cold-water cooling happen one stick at a time.
+Big kitchen enlarges the scene. Full screen removes the browser window border.
