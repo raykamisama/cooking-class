@@ -4,14 +4,14 @@
   const $=s=>document.querySelector(s), T=window.THREE;
   const recipe={bananas:4,mixGrams:150,startingMilkMl:25,reservedMilkMl:100,milkIncrementMl:25,butterGrams:5,scoopMl:30};
   const steps=[
-    {short:'Peel',title:'Peel four bananas',instruction:'Click or drag each glowing banana to peel it.',measure:'4 medium bananas · about 400 g peeled',cue:'Pull the peel down.',watch:'What colour is the banana inside?'},
-    {short:'Bowl',title:'Put the bananas in the bowl',instruction:'Drag the four whole peeled bananas into the glowing bowl.',measure:'All 4 peeled bananas go into this bowl',cue:'One, two, three, four bananas.',watch:'How many bananas are in the bowl?'},
-    {short:'Mash',title:'Mash the bananas',instruction:'Click the masher three times. Watch the fruit change.',measure:'3 presses · whole bananas → chunks → mash',cue:'Press with the masher.',watch:'Is it whole, chunky or mashed?'},
-    {short:'Measure',title:'Measure and add',instruction:'Pour one 150 g packet and 25 ml fresh milk into the bowl.',measure:'150 g Aji mix + 25 ml fresh milk to start',cue:'The packet already has flour, egg and milk.',watch:'Do we need another egg? No—the mix already has egg.'},
-    {short:'Stir',title:'Stir into batter',instruction:'Use the wire whisk for three slow circles. Check the real batter.',measure:'Tool: balloon whisk · add 25 ml milk ONLY if too thick',cue:'Fold the dry mix into the banana.',watch:'What happened to the lumps?'},
-    {short:'Butter',title:'Heat and butter the pan',instruction:'Heat on low. Then drag the butter into the pan.',measure:'5 g butter · spread a thin coating',cue:'The pan is hot. An adult helps.',watch:'What happens when butter touches the warm pan?'},
-    {short:'Cook',title:'Pour, wait and flip',instruction:'Pour one measured scoop. Wait for bubbles, then flip.',measure:'30 ml batter = 2 level 15 ml tablespoons',cue:'Look for bubbles and set edges.',watch:'Is it ready to flip yet?'},
-    {short:'Serve',title:'Move to a plate and cool',instruction:'Use the spatula to lift the pancake onto the plate.',measure:'Cool and check before tasting · cook the remaining batter as needed',cue:'A warm pancake, ready to share.',watch:'Tell the recipe from banana to pancake.'}
+    {short:'Peel',title:'Peel four bananas',instruction:'Click or drag a banana.',measure:'4 ripe bananas'},
+    {short:'Bowl',title:'Into the bowl',instruction:'Drag all four into the bowl.',measure:'All 4 bananas'},
+    {short:'Mash',title:'Mash the bananas',instruction:'Press the masher three times.',measure:'3 presses'},
+    {short:'Measure',title:'Measure and add',instruction:'Add the mix, then the milk.',measure:'150 g mix + 25 ml fresh milk'},
+    {short:'Stir',title:'Whisk the batter',instruction:'Make three slow circles.',measure:'Balloon whisk · +25 ml milk if needed'},
+    {short:'Butter',title:'Butter the pan',instruction:'Warm on low. Add butter.',measure:'5 g butter · adult helps'},
+    {short:'Cook',title:'Cook and flip',instruction:'Pour. Wait for bubbles. Flip.',measure:'30 ml per pancake'},
+    {short:'Serve',title:'Cool and serve',instruction:'Move to the plate. Let cool.',measure:'Cool before tasting'}
   ];
   const fresh=()=>({peeled:Array(recipe.bananas).fill(false),inBowl:Array(recipe.bananas).fill(false),mash:0,mix:Array(recipe.mixGrams/150).fill(false),milkMl:0,stirs:0,needsFinalStir:false,heated:false,buttered:false,poured:false,bubbles:false,cooked:false,served:false});
   let batch=fresh(),step=0,started=false,busy=false,generation=0,sound=false,audio,timer;
@@ -31,7 +31,7 @@
     if(step===6)return [{id:!batch.poured?'batter-cup':!batch.bubbles?'pan':'spatula',label:!batch.poured?'Pour 30 ml batter':!batch.bubbles?'Wait for bubbles':'Flip pancake',kind:!batch.poured?'pour':!batch.bubbles?'wait':'flip'}];
     return [{id:'serve',label:'Move to plate & cool',kind:'serve'}];
   }
-  function message(text){$('#feedback').textContent=text;$('#scene-message').textContent=text;}
+  function message(text,show=false){$('#feedback').textContent=text;$('#scene-message').textContent=show?text:'';$('#scene-message').hidden=!show;}
   function cancel(){generation++;clearTimeout(timer);animation=null;busy=false;if(drag&&renderer&&renderer.domElement.hasPointerCapture(drag.pointerId))renderer.domElement.releasePointerCapture(drag.pointerId);drag=null;}
   function chime(){if(!sound)return;try{audio ||= new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=720;g.gain.setValueAtTime(.04,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.2);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.22);}catch{}}
   function progress(){
@@ -50,13 +50,13 @@
     $('#stick-progress').textContent=started?progress():'One batch · 4 bananas';
     $('#extra-milk').hidden=!(started&&step===4&&batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<recipe.reservedMilkMl);$('#extra-milk').disabled=busy;
     $('#item-actions').replaceChildren();
-    if(actions.length>1)actions.forEach(a=>{const b=document.createElement('button');b.textContent=a.label;b.dataset.item=a.id;b.disabled=busy;b.onclick=()=>perform(a.id);$('#item-actions').append(b);});
+    if(actions.length>1)actions.forEach(a=>{const b=document.createElement('button');b.textContent=['peel','banana'].includes(a.kind)?`🍌 ${a.index+1}`:a.kind==='mix'?'Mix · 150 g':a.kind==='milk'?'Milk · 25 ml':a.label;b.setAttribute('aria-label',a.label);b.dataset.item=a.id;b.disabled=busy;b.onclick=()=>perform(a.id);$('#item-actions').append(b);});
     $('#banana-progress').replaceChildren();for(let i=0;i<4;i++){const c=document.createElement('span');c.className='banana-chip'+(batch.peeled[i]?' complete':'');c.textContent=`${batch.peeled[i]?'✓':'🍌'} ${i+1}${batch.inBowl[i]?' · in bowl':''}`;$('#banana-progress').append(c);}
   }
   function render(text){
-    cancel();const s=steps[step];$('#title').textContent=s.title;$('#instruction').textContent=s.instruction;$('#stepcount').textContent=`${step+1} / 8`;
-    $('#board-title').textContent=`${step+1}. ${s.title}`;$('#board-instruction').textContent=s.instruction;$('#measure').textContent=s.measure;$('#activecue').textContent=s.cue;$('#watchcue').textContent=s.watch;$('#stagelabel').textContent=['PEEL HERE','DROP INTO THE BOWL','PRESS THE MASHER','MEASURE INTO THE BOWL','MIXING BOWL','LOW HEAT + BUTTER','30 ML → BUBBLES → FLIP','COOLING PLATE'][step];$('#setup').hidden=started;
-    for(const selector of ['#steps','#board-steps']){$(selector).replaceChildren();steps.forEach((s,i)=>{const b=document.createElement('button');b.textContent=selector==='#board-steps'?`${i+1}. ${s.short}`:i+1;b.className=i===step?'current':'';b.setAttribute('aria-current',i===step?'step':'false');b.setAttribute('aria-label',s.title);b.disabled=!started||steps.slice(0,i).some((_,j)=>!done(j));b.onclick=()=>{step=i;render();};$(selector).append(b);});}
+    cancel();const s=steps[step];$('#banana-fact').hidden=step>2;
+    $('#board-title').textContent=`${step+1}. ${s.title}`;$('#board-instruction').textContent=s.instruction;$('#measure').textContent=s.measure;$('#setup').hidden=started;
+    for(const selector of ['#board-steps']){$(selector).replaceChildren();steps.forEach((s,i)=>{const b=document.createElement('button');b.textContent=selector==='#board-steps'?`${i+1}. ${s.short}`:i+1;b.className=i===step?'current':'';b.setAttribute('aria-current',i===step?'step':'false');b.setAttribute('aria-label',s.title);b.disabled=!started||steps.slice(0,i).some((_,j)=>!done(j));b.onclick=()=>{step=i;render();};$(selector).append(b);});}
     controls();if(renderer){buildScene();resize();}message(text||(!started?'Start the batch, then follow the gold glow.':done()?(step===7?'Batch finished! One demonstration is enough.':'Step complete. Click Next.'):s.instruction));
   }
   function resetFrom(index){
@@ -324,16 +324,16 @@
     function pick(){return items.flatMap(item=>[...ray.intersectObject(item.object,true),...(item.ring?ray.intersectObject(item.ring):[])].map(hit=>({item,distance:hit.distance}))).sort((a,b)=>a.distance-b.distance)[0]?.item;}
     canvas.onpointerdown=e=>{if(e.button!==0||busy||!started)return;const p=ground(e),item=pick();if(!p||!item)return;drag={item,pointerId:e.pointerId,origin:item.object.position.clone(),offset:item.object.position.clone().sub(p),x:e.clientX,y:e.clientY,moved:false};canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';};
     canvas.onpointermove=e=>{const p=ground(e);if(drag){drag.moved ||= Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>7;if(p&&drag.item.target)drag.item.object.position.copy(p.add(drag.offset));return;}hovered=!busy&&started?pick()?.object:null;canvas.style.cursor=hovered?'pointer':'default';};
-    canvas.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;canvas.releasePointerCapture(e.pointerId);canvas.style.cursor='pointer';const good=!d.moved||!d.item.target||(Math.abs(d.item.object.position.x-2.1)<1.45&&Math.abs(d.item.object.position.z-.25)<1.5);if(good)perform(d.item.id);else{d.item.object.position.copy(d.origin);message('Drop inside the green ring, or click the glowing item.');}};
+    canvas.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;canvas.releasePointerCapture(e.pointerId);canvas.style.cursor='pointer';const good=!d.moved||!d.item.target||(Math.abs(d.item.object.position.x-2.1)<1.45&&Math.abs(d.item.object.position.z-.25)<1.5);if(good)perform(d.item.id);else{d.item.object.position.copy(d.origin);message('Drop in the green ring.',true);}};
     canvas.onpointercancel=()=>{if(drag){drag.item.object.position.copy(drag.origin);drag=null;}};
     canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancel();renderer=null;$('#fallback').hidden=false;controls();message('Use the big buttons to continue.');});requestAnimationFrame(frame);
   }
   $('#start').onclick=()=>{started=true;render();};$('#action').onclick=()=>perform();$('#extra-milk').onclick=()=>perform('extra-milk');
-  $('#next').onclick=()=>{if(!started||busy)return;if(!done()){message('Finish this step once before moving on. Follow the gold glow.');return;}if(step===7){message('Batch finished! Repeat the real cooking as needed; the demonstration is complete.');return;}step++;render();};
+  $('#next').onclick=()=>{if(!started||busy)return;if(!done()){message('Finish this step first.',true);return;}if(step===7){message('Batch finished! Repeat the real cooking as needed; the demonstration is complete.');return;}step++;render();};
   $('#back').onclick=()=>{if(step>0){step--;render();}};$('#replay').onclick=()=>{if(!started||busy)return;resetFrom(step);render('This step and later steps have been reset.');};$('#restart').onclick=()=>{batch=fresh();step=0;started=false;render();};
   $('#sound').onclick=()=>{sound=!sound;$('#sound').textContent=sound?'Sound on':'Sound off';$('#sound').setAttribute('aria-pressed',String(sound));chime();};
   $('#kitchen-only').onclick=()=>{const on=document.body.classList.toggle('kitchen-focus');$('#kitchen-only').textContent=on?'Show lesson':'Big kitchen';$('#kitchen-only').setAttribute('aria-pressed',String(on));resize();};
-  $('#full').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else message('Use your browser’s full-screen command.');}catch{message('Use your browser’s full-screen command.');}};
+  $('#full').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else message('Use your browser’s full-screen command.',true);}catch{message('Use your browser’s full-screen command.',true);}};
   document.addEventListener('keydown',e=>{if(e.target.closest('button,input,a,summary'))return;if(e.key==='ArrowRight')$('#next').click();if(e.key==='ArrowLeft')$('#back').click();});window.addEventListener('resize',resize);
   try{if(!T)throw Error('Missing Three.js');initGraphics();}catch{renderer=null;$('#fallback').hidden=false;}render();
 })();
