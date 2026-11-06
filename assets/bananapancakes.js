@@ -2,12 +2,12 @@
 (() => {
   'use strict';
   const $=s=>document.querySelector(s), T=window.THREE;
-  const recipe={bananas:4,mixGrams:150,startingMilkMl:0,reservedMilkMl:100,milkIncrementMl:25,butterGrams:5,scoopMl:30};
+  const recipe={bananas:4,mixGrams:150,startingMilkMl:25,reservedMilkMl:100,milkIncrementMl:25,butterGrams:5,scoopMl:30};
   const steps=[
     {short:'Peel',title:'Peel four bananas',instruction:'Click or drag each glowing banana to peel it.',measure:'4 medium bananas · about 400 g peeled',cue:'Pull the peel down.',watch:'What colour is the banana inside?'},
     {short:'Bowl',title:'Put the bananas in the bowl',instruction:'Drag the four whole peeled bananas into the glowing bowl.',measure:'All 4 peeled bananas go into this bowl',cue:'One, two, three, four bananas.',watch:'How many bananas are in the bowl?'},
     {short:'Mash',title:'Mash the bananas',instruction:'Click the masher three times. Watch the fruit change.',measure:'3 presses · whole bananas → chunks → mash',cue:'Press with the masher.',watch:'Is it whole, chunky or mashed?'},
-    {short:'Measure',title:'Measure and add',instruction:'Add one 150 g packet. Keep the measured milk aside.',measure:'150 g Aji mix · reserve 100 ml milk; do not pour it all in',cue:'The packet already has flour, egg and milk.',watch:'Do we need another egg? No—the mix already has egg.'},
+    {short:'Measure',title:'Measure and add',instruction:'Pour one 150 g packet and 25 ml fresh milk into the bowl.',measure:'150 g Aji mix + 25 ml fresh milk to start',cue:'The packet already has flour, egg and milk.',watch:'Do we need another egg? No—the mix already has egg.'},
     {short:'Stir',title:'Stir into batter',instruction:'Use the wire whisk for three slow circles. Check the real batter.',measure:'Tool: balloon whisk · add 25 ml milk ONLY if too thick',cue:'Fold the dry mix into the banana.',watch:'What happened to the lumps?'},
     {short:'Butter',title:'Heat and butter the pan',instruction:'Heat on low. Then drag the butter into the pan.',measure:'5 g butter · spread a thin coating',cue:'The pan is hot. An adult helps.',watch:'What happens when butter touches the warm pan?'},
     {short:'Cook',title:'Pour, wait and flip',instruction:'Pour one measured scoop. Wait for bubbles, then flip.',measure:'30 ml batter = 2 level 15 ml tablespoons',cue:'Look for bubbles and set edges.',watch:'Is it ready to flip yet?'},
@@ -18,14 +18,14 @@
   let renderer,scene,camera,root,animation=null,drag=null,items=[],glows=[],targetRing,food={},hovered=null;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   function done(i=step) {
-    return [batch.peeled.every(Boolean),batch.inBowl.every(Boolean),batch.mash>=3,batch.mix.every(Boolean),batch.stirs>=3&&!batch.needsFinalStir,batch.heated&&batch.buttered,batch.cooked,batch.served][i];
+    return [batch.peeled.every(Boolean),batch.inBowl.every(Boolean),batch.mash>=3,batch.mix.every(Boolean)&&batch.milkMl>=recipe.startingMilkMl,batch.stirs>=3&&!batch.needsFinalStir,batch.heated&&batch.buttered,batch.cooked,batch.served][i];
   }
   function available() {
     if(!started||done())return [];
     if(step===0)return batch.peeled.flatMap((v,i)=>v?[]:[{id:`banana-${i}`,label:`Peel banana ${i+1}`,kind:'peel',index:i}]);
     if(step===1)return batch.inBowl.flatMap((v,i)=>v?[]:[{id:`banana-${i}`,label:`Put banana ${i+1} in bowl`,kind:'banana',index:i}]);
     if(step===2)return [{id:'masher',label:`Mash · ${batch.mash+1} of 3`,kind:'mash'}];
-    if(step===3)return batch.mix.flatMap((v,i)=>v?[]:[{id:`mix-${i}`,label:'Add one packet · 150 g',kind:'mix',index:i}]);
+    if(step===3)return [...batch.mix.flatMap((v,i)=>v?[]:[{id:`mix-${i}`,label:'Add one packet · 150 g',kind:'mix',index:i}]),...(batch.milkMl<recipe.startingMilkMl?[{id:'milk',label:'Pour 25 ml fresh milk',kind:'milk'}]:[])];
     if(step===4)return [{id:'whisk',label:batch.needsFinalStir?'Whisk in the added milk':`Whisk · ${batch.stirs+1} of 3`,kind:'stir'}];
     if(step===5)return [{id:batch.heated?'butter':'hob',label:batch.heated?'Melt 5 g butter':'Heat pan on low',kind:batch.heated?'butter':'heat'}];
     if(step===6)return [{id:!batch.poured?'batter-cup':!batch.bubbles?'pan':'spatula',label:!batch.poured?'Pour 30 ml batter':!batch.bubbles?'Wait for bubbles':'Flip pancake',kind:!batch.poured?'pour':!batch.bubbles?'wait':'flip'}];
@@ -68,12 +68,12 @@
     const token=generation;
     const finish=()=>{if(token!==generation)return;
       if(a.kind==='peel')batch.peeled[a.index]=true;if(a.kind==='banana')batch.inBowl[a.index]=true;if(a.kind==='mash')batch.mash++;
-      if(a.kind==='mix')batch.mix[a.index]=true;if(a.kind==='stir'){batch.stirs++;batch.needsFinalStir=false;}
+      if(a.kind==='mix')batch.mix[a.index]=true;if(a.kind==='milk')batch.milkMl=recipe.startingMilkMl;if(a.kind==='stir'){batch.stirs++;batch.needsFinalStir=false;}
       if(a.kind==='extra-milk'){batch.milkMl+=recipe.milkIncrementMl;batch.needsFinalStir=true;}
       if(a.kind==='heat')batch.heated=true;if(a.kind==='butter')batch.buttered=true;if(a.kind==='pour')batch.poured=true;if(a.kind==='wait')batch.bubbles=true;if(a.kind==='flip')batch.cooked=true;if(a.kind==='serve')batch.served=true;
       busy=false;animation=null;chime();render(a.kind==='mash'?(batch.mash===3?'The four bananas are now mashed.':'The whole bananas are becoming softer chunks.'):a.kind==='stir'?(batch.stirs>=3?'Check the real batter: leave the milk out unless it needs thinning. Test one small pancake.':'Keep stirring: the dry mix and banana are blending.'):undefined);
     };
-    if(renderer&&visual){animation={action:a,item:visual,from:visual.object.position.clone(),start:performance.now(),duration:reduced?180:['heat','wait'].includes(a.kind)?2200:1600,finish};}
+    if(renderer&&visual){animation={action:a,item:visual,from:visual.object.position.clone(),start:performance.now(),duration:reduced?180:['heat','wait','mix'].includes(a.kind)?2200:1600,finish};}
     else timer=setTimeout(finish,reduced?180:900);
   }
   function dispose(){if(!root)return;const materials=new Set(),geometries=new Set();root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)materials.add(o.material);});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());scene.remove(root);}
@@ -101,7 +101,7 @@
     const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:texture}));m.position.set(x,y,z);p.add(m);return m;
   }
   function packet(x,y,z,scale=1) {
-    const p=new T.Group();p.position.set(x,y,z);p.scale.setScalar(scale);root.add(p);
+    const p=new T.Group();p.name='aji-packet';p.position.set(x,y,z);p.scale.setScalar(scale);root.add(p);
     box(1.1,1.65,.3,0xf8f2dc,0,.85,0,p);box(1.16,.09,.34,0x309989,0,1.71,0,p);
     box(1.16,.09,.34,0x309989,0,.04,0,p);
     frontLabel(labelTexture('aji',[
@@ -234,10 +234,10 @@
     if(step===2){foodInBowl();const g=new T.Group();root.add(g);g.position.copy(batch.mash>0&&batch.mash<3?new T.Vector3(2.1,1.4-batch.mash*.07,.25):new T.Vector3(-2.8,1.2,.5));masher(g);if(needs('masher'))register('masher',g,new T.Vector3(2.1,1.4-batch.mash*.07,.25));}
     if(step===3){
       box(.7,1.1,.55,0xf5f2de,-4.9,.86,1.35);
-      frontLabel(labelTexture('fresh-milk',[['FRESH',160,75],['MILK',280,105],['100 ml',425,60]],'#f3f5e9','#37758c'),.66,.97,-4.9,.87,1.64);
-      foodInBowl();for(let i=0;i<batch.mix.length;i++)if(!batch.mix[i]){const p=packet(-4.7+i*1.4,.3,-.65,.75);if(needs(`mix-${i}`))register(`mix-${i}`,p,new T.Vector3(1.1,1.2,.25),.55);}
-      {const g=new T.Group();root.add(g);g.position.set(-2.1,1,1.35);measuringCup(g,100);}
-      food.stream=mesh(new T.CylinderGeometry(.045,.065,1,10),0xfff7e5,2.1,1.4,.25);food.stream.visible=false;
+      frontLabel(labelTexture('fresh-milk',[['FRESH',160,75],['MILK',280,105],['25 ml',425,60]],'#f3f5e9','#37758c'),.66,.97,-4.9,.87,1.64);
+      foodInBowl();for(let i=0;i<batch.mix.length;i++)if(!batch.mix[i]){const p=packet(-4.7+i*1.4,.3,-.65,.75);if(needs(`mix-${i}`))register(`mix-${i}`,p,new T.Vector3(2.1,1.3,.25),.55);}
+      if(needs('milk')){const g=new T.Group();root.add(g);g.position.set(-2.1,1,1.35);measuringCup(g,recipe.startingMilkMl);register('milk',g,new T.Vector3(1.45,1.65,.25));}
+      food.stream=mesh(new T.CylinderGeometry(.045,.065,1,10),0xfff7e5,2.1,1.4,.25);food.stream.name='ingredient-pour-stream';food.stream.visible=false;
     }
     if(step===4){
       foodInBowl();const g=new T.Group();root.add(g);
@@ -246,7 +246,7 @@
       g.rotation.z=batch.stirs>=3&&!batch.needsFinalStir?Math.PI/2:.14;
       balloonWhisk(g);if(needs('whisk'))register('whisk',g,new T.Vector3(2.1,1.5,.25));
       // Optional milk has its own measured cup and animation, never an invisible adjustment.
-      if(batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<recipe.reservedMilkMl){const g=new T.Group();root.add(g);g.position.set(-3,1,1.2);measuringCup(g,25);register('extra-milk',g,new T.Vector3(1.45,1.65,.25));food.stream=mesh(new T.CylinderGeometry(.045,.065,1,10),0xfff7e5,2.1,1.4,.25);food.stream.visible=false;}
+      if(batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<recipe.reservedMilkMl){const g=new T.Group();root.add(g);g.position.set(-3,1,1.2);measuringCup(g,25);register('extra-milk',g,new T.Vector3(1.45,1.65,.25));food.stream=mesh(new T.CylinderGeometry(.045,.065,1,10),0xfff7e5,2.1,1.4,.25);food.stream.name='ingredient-pour-stream';food.stream.visible=false;}
       food.ribbon=mesh(new T.CylinderGeometry(.035,.055,.6,10),0xe8c789,2.1,1.3,.25);food.ribbon.visible=false;
     }
     if(step>=5&&step<=6){
@@ -259,7 +259,7 @@
       if(batch.poured){const cup=new T.Group();root.add(cup);cup.position.set(-4.8,1,1.4);measuringCup(cup,30,true,true);food.pancake=batch.cooked?pancake(2.1,.8,.25):rawPancake();
         food.bubbles=[];for(let i=0;i<10;i++){const a=i*2.4,r=.18+(i%3)*.17,q=torus(.04,.012,0xbba271,2.1+Math.cos(a)*r,.77,.25+Math.sin(a)*r);q.visible=batch.bubbles;food.bubbles.push(q);}
       }
-      if(step===6&&needs('batter-cup')){const g=new T.Group();root.add(g);g.position.set(-2.8,1.2,.7);measuringCup(g,30,true);register('batter-cup',g,new T.Vector3(1.45,1.4,.25));food.stream=mesh(new T.CylinderGeometry(.08,.09,1,10),0xe7c488,2.1,1.1,.25);food.stream.visible=false;food.pourCake=rawPancake();food.pourCake.scale.set(.02,1,.02);}
+      if(step===6&&needs('batter-cup')){const g=new T.Group();root.add(g);g.position.set(-2.8,1.2,.7);measuringCup(g,30,true);register('batter-cup',g,new T.Vector3(1.45,1.4,.25));food.stream=mesh(new T.CylinderGeometry(.08,.09,1,10),0xe7c488,2.1,1.1,.25);food.stream.name='ingredient-pour-stream';food.stream.visible=false;food.pourCake=rawPancake();food.pourCake.scale.set(.02,1,.02);}
       if(step===6&&needs('pan'))register('pan',food.pancake,null,.8);
       if(step===6&&needs('spatula')){const g=new T.Group();root.add(g);g.position.set(-2.8,1.1,.7);spatula(g);register('spatula',g,new T.Vector3(2.1,.49,.6),.6);}
     }
@@ -283,10 +283,23 @@
       if(kind==='banana')object.scale.setScalar(.68-.2*ease);
       if(kind==='mash'&&work>0){object.position.y=a.item.target.y-Math.abs(Math.sin(work*Math.PI))*.25;deformMash((batch.mash+work)/3);}
       if(['milk','extra-milk','mix','pour'].includes(kind)){
-        object.rotation.z=-Math.sin(work*Math.PI)*.8;
-        if(kind==='mix')object.rotation.z=Math.sin(work*Math.PI)*.9;
-        const local=kind==='mix'?new T.Vector3(0,1.65,0):new T.Vector3(.38,.84,0);
-        streamFrom(object,local,kind==='pour'?.76:(food.puree?.position.y||.88)+.06);if(food.stream){food.stream.visible=work>.12&&work<.9;food.stream.material.color.copy(new T.Color(kind==='mix'?0xf7e9c8:kind==='pour'?0xe7c488:0xfff7e5).convertSRGBToLinear());}
+        const flow=kind==='mix'?work>.22&&work<.78:work>.12&&work<.9;
+        let local=new T.Vector3(.38,.84,0);
+        if(kind==='mix'){
+          // Tilt the open end RIGHT, then keep that opening over the bowl centre.
+          // Pour only while fully tilted; tipping and returning do not emit powder.
+          const ramp=Math.max(0,Math.min(1,work/.18,(1-work)/.18));
+          const easeRamp=ramp*ramp*(3-2*ramp);object.rotation.z=-2.05*easeRamp;
+          if(work>0){
+            const height=1.78*object.scale.y;
+            const mouthY=(1.3+height)*(1-easeRamp)+1.7*easeRamp;
+            object.position.set(2.1+Math.sin(object.rotation.z)*height,mouthY-Math.cos(object.rotation.z)*height,.25);
+            if(!object.userData.opened){box(1.02,.015,.16,0x695b42,0,1.767,0,object);object.userData.opened=true;}
+          }
+          local=new T.Vector3(0,1.78,0);
+        }else object.rotation.z=-Math.sin(work*Math.PI)*.8;
+        streamFrom(object,local,kind==='pour'?.76:(food.puree?.position.y||.88)+.06);
+        if(food.stream){food.stream.visible=flow;food.stream.material.color.copy(new T.Color(kind==='mix'?0xf7e9c8:kind==='pour'?0xe7c488:0xfff7e5).convertSRGBToLinear());}
         if(kind==='pour'&&food.pourCake){const spread=Math.max(.02,Math.min(1,work*1.2));food.pourCake.scale.set(spread,1,spread);}
       }
       if(kind==='stir'&&work>0){object.position.x+=Math.sin(work*Math.PI*2)*.25;object.position.z+=Math.cos(work*Math.PI*2)*.25;
