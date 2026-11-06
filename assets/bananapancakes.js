@@ -2,31 +2,31 @@
 (() => {
   'use strict';
   const $=s=>document.querySelector(s), T=window.THREE;
-  const recipe={bananas:4,mixGrams:450,startingMilkMl:100,milkIncrementMl:25,butterGrams:5,scoopMl:30};
+  const recipe={bananas:4,mixGrams:150,startingMilkMl:0,reservedMilkMl:100,milkIncrementMl:25,butterGrams:5,scoopMl:30};
   const steps=[
     {short:'Peel',title:'Peel four bananas',instruction:'Click or drag each glowing banana to peel it.',measure:'4 medium bananas · about 400 g peeled',cue:'Pull the peel down.',watch:'What colour is the banana inside?'},
     {short:'Bowl',title:'Put the bananas in the bowl',instruction:'Drag the four whole peeled bananas into the glowing bowl.',measure:'All 4 peeled bananas go into this bowl',cue:'One, two, three, four bananas.',watch:'How many bananas are in the bowl?'},
     {short:'Mash',title:'Mash the bananas',instruction:'Click the masher three times. Watch the fruit change.',measure:'3 presses · whole bananas → chunks → mash',cue:'Press with the masher.',watch:'Is it whole, chunky or mashed?'},
-    {short:'Measure',title:'Measure and add',instruction:'Add the three mix packets and the measured milk.',measure:'450 g Aji mix (3 × 150 g) + 100 ml fresh milk to start',cue:'The packet already has flour, egg and milk.',watch:'Do we need another egg? No—the mix already has egg.'},
-    {short:'Stir',title:'Stir into batter',instruction:'Stir three times. Look for thick batter that falls in a ribbon.',measure:'If too thick: add 25 ml milk, then stir again',cue:'Fold the dry mix into the banana.',watch:'What happened to the lumps?'},
+    {short:'Measure',title:'Measure and add',instruction:'Add one 150 g packet. Keep the measured milk aside.',measure:'150 g Aji mix · reserve 100 ml milk; do not pour it all in',cue:'The packet already has flour, egg and milk.',watch:'Do we need another egg? No—the mix already has egg.'},
+    {short:'Stir',title:'Stir into batter',instruction:'Use the wire whisk for three slow circles. Check the real batter.',measure:'Tool: balloon whisk · add 25 ml milk ONLY if too thick',cue:'Fold the dry mix into the banana.',watch:'What happened to the lumps?'},
     {short:'Butter',title:'Heat and butter the pan',instruction:'Heat on low. Then drag the butter into the pan.',measure:'5 g butter · spread a thin coating',cue:'The pan is hot. An adult helps.',watch:'What happens when butter touches the warm pan?'},
     {short:'Cook',title:'Pour, wait and flip',instruction:'Pour one measured scoop. Wait for bubbles, then flip.',measure:'30 ml batter = 2 level 15 ml tablespoons',cue:'Look for bubbles and set edges.',watch:'Is it ready to flip yet?'},
     {short:'Serve',title:'Move to a plate and cool',instruction:'Use the spatula to lift the pancake onto the plate.',measure:'Cool and check before tasting · cook the remaining batter as needed',cue:'A warm pancake, ready to share.',watch:'Tell the recipe from banana to pancake.'}
   ];
-  const fresh=()=>({peeled:Array(recipe.bananas).fill(false),inBowl:Array(recipe.bananas).fill(false),mash:0,mix:Array(3).fill(false),milkMl:0,stirs:0,needsFinalStir:false,heated:false,buttered:false,poured:false,bubbles:false,cooked:false,served:false});
+  const fresh=()=>({peeled:Array(recipe.bananas).fill(false),inBowl:Array(recipe.bananas).fill(false),mash:0,mix:Array(recipe.mixGrams/150).fill(false),milkMl:0,stirs:0,needsFinalStir:false,heated:false,buttered:false,poured:false,bubbles:false,cooked:false,served:false});
   let batch=fresh(),step=0,started=false,busy=false,generation=0,sound=false,audio,timer;
   let renderer,scene,camera,root,animation=null,drag=null,items=[],glows=[],targetRing,food={},hovered=null;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   function done(i=step) {
-    return [batch.peeled.every(Boolean),batch.inBowl.every(Boolean),batch.mash>=3,batch.mix.every(Boolean)&&batch.milkMl>=100,batch.stirs>=3&&!batch.needsFinalStir,batch.heated&&batch.buttered,batch.cooked,batch.served][i];
+    return [batch.peeled.every(Boolean),batch.inBowl.every(Boolean),batch.mash>=3,batch.mix.every(Boolean),batch.stirs>=3&&!batch.needsFinalStir,batch.heated&&batch.buttered,batch.cooked,batch.served][i];
   }
   function available() {
     if(!started||done())return [];
     if(step===0)return batch.peeled.flatMap((v,i)=>v?[]:[{id:`banana-${i}`,label:`Peel banana ${i+1}`,kind:'peel',index:i}]);
     if(step===1)return batch.inBowl.flatMap((v,i)=>v?[]:[{id:`banana-${i}`,label:`Put banana ${i+1} in bowl`,kind:'banana',index:i}]);
     if(step===2)return [{id:'masher',label:`Mash · ${batch.mash+1} of 3`,kind:'mash'}];
-    if(step===3)return [...batch.mix.flatMap((v,i)=>v?[]:[{id:`mix-${i}`,label:`Add packet ${i+1} · 150 g`,kind:'mix',index:i}]),...(!batch.milkMl?[{id:'milk',label:'Pour 100 ml fresh milk',kind:'milk'}]:[])];
-    if(step===4)return [{id:'spoon',label:batch.needsFinalStir?'Stir in the extra milk':`Stir · ${batch.stirs+1} of 3`,kind:'stir'}];
+    if(step===3)return batch.mix.flatMap((v,i)=>v?[]:[{id:`mix-${i}`,label:'Add one packet · 150 g',kind:'mix',index:i}]);
+    if(step===4)return [{id:'whisk',label:batch.needsFinalStir?'Whisk in the added milk':`Whisk · ${batch.stirs+1} of 3`,kind:'stir'}];
     if(step===5)return [{id:batch.heated?'butter':'hob',label:batch.heated?'Melt 5 g butter':'Heat pan on low',kind:batch.heated?'butter':'heat'}];
     if(step===6)return [{id:!batch.poured?'batter-cup':!batch.bubbles?'pan':'spatula',label:!batch.poured?'Pour 30 ml batter':!batch.bubbles?'Wait for bubbles':'Flip pancake',kind:!batch.poured?'pour':!batch.bubbles?'wait':'flip'}];
     return [{id:'serve',label:'Move to plate & cool',kind:'serve'}];
@@ -48,7 +48,7 @@
     const actions=available();$('#action').disabled=!started||busy||!actions.length;$('#action').textContent=!started?'Start cooking above':busy?'Working…':actions[0]?.label||'Step complete ✓';
     $('#back').disabled=!started||step===0;$('#next').disabled=!started||busy;$('#next').textContent=step===7&&done()?'Batch finished ✓':'Next →';$('#replay').disabled=!started||busy;
     $('#stick-progress').textContent=started?progress():'One batch · 4 bananas';
-    $('#extra-milk').hidden=!(started&&step===4&&batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<200);$('#extra-milk').disabled=busy;
+    $('#extra-milk').hidden=!(started&&step===4&&batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<recipe.reservedMilkMl);$('#extra-milk').disabled=busy;
     $('#item-actions').replaceChildren();
     if(actions.length>1)actions.forEach(a=>{const b=document.createElement('button');b.textContent=a.label;b.dataset.item=a.id;b.disabled=busy;b.onclick=()=>perform(a.id);$('#item-actions').append(b);});
     $('#banana-progress').replaceChildren();for(let i=0;i<4;i++){const c=document.createElement('span');c.className='banana-chip'+(batch.peeled[i]?' complete':'');c.textContent=`${batch.peeled[i]?'✓':'🍌'} ${i+1}${batch.inBowl[i]?' · in bowl':''}`;$('#banana-progress').append(c);}
@@ -63,15 +63,15 @@
     if(index<=0)batch.peeled.fill(false);if(index<=1)batch.inBowl.fill(false);if(index<=2)batch.mash=0;if(index<=3){batch.mix.fill(false);batch.milkMl=0;}if(index<=4){batch.stirs=0;batch.needsFinalStir=false;}if(index===4)batch.milkMl=recipe.startingMilkMl;if(index<=5){batch.heated=false;batch.buttered=false;}if(index<=6){batch.poured=false;batch.bubbles=false;batch.cooked=false;}batch.served=false;
   }
   function perform(id){
-    if(!started||busy)return;const a=id==='extra-milk'&&step===4&&batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<200?{id,kind:'extra-milk',label:'Add 25 ml milk'}:available().find(a=>a.id===id)||(!id?available()[0]:null);if(!a)return;
+    if(!started||busy)return;const a=id==='extra-milk'&&step===4&&batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<recipe.reservedMilkMl?{id,kind:'extra-milk',label:'Add 25 ml milk'}:available().find(a=>a.id===id)||(!id?available()[0]:null);if(!a)return;
     const visual=items.find(i=>i.id===a.id);busy=true;controls();message(a.kind==='heat'?'Low heat. This animation is not a real pan timer.':a.kind==='wait'?'Watch for bubbles and set edges. Real cooking takes as long as needed.':a.label);
     const token=generation;
     const finish=()=>{if(token!==generation)return;
       if(a.kind==='peel')batch.peeled[a.index]=true;if(a.kind==='banana')batch.inBowl[a.index]=true;if(a.kind==='mash')batch.mash++;
-      if(a.kind==='mix')batch.mix[a.index]=true;if(a.kind==='milk')batch.milkMl=recipe.startingMilkMl;if(a.kind==='stir'){batch.stirs++;batch.needsFinalStir=false;}
+      if(a.kind==='mix')batch.mix[a.index]=true;if(a.kind==='stir'){batch.stirs++;batch.needsFinalStir=false;}
       if(a.kind==='extra-milk'){batch.milkMl+=recipe.milkIncrementMl;batch.needsFinalStir=true;}
       if(a.kind==='heat')batch.heated=true;if(a.kind==='butter')batch.buttered=true;if(a.kind==='pour')batch.poured=true;if(a.kind==='wait')batch.bubbles=true;if(a.kind==='flip')batch.cooked=true;if(a.kind==='serve')batch.served=true;
-      busy=false;animation=null;chime();render(a.kind==='mash'?(batch.mash===3?'The four bananas are now mashed.':'The whole bananas are becoming softer chunks.'):a.kind==='stir'?(batch.stirs>=3?'Thick batter: check for a slow ribbon. Add 25 ml milk only if needed.':'Keep stirring: the dry mix and banana are blending.'):undefined);
+      busy=false;animation=null;chime();render(a.kind==='mash'?(batch.mash===3?'The four bananas are now mashed.':'The whole bananas are becoming softer chunks.'):a.kind==='stir'?(batch.stirs>=3?'Check the real batter: leave the milk out unless it needs thinning. Test one small pancake.':'Keep stirring: the dry mix and banana are blending.'):undefined);
     };
     if(renderer&&visual){animation={action:a,item:visual,from:visual.object.position.clone(),start:performance.now(),duration:reduced?180:['heat','wait'].includes(a.kind)?2200:1600,finish};}
     else timer=setTimeout(finish,reduced?180:900);
@@ -110,7 +110,19 @@
     ],'#4da99b','#fff6df'),1.04,1.52,0,.88,.16,p);
     return p;
   }
-  function banana(parent,peeled=false) {
+  function ripePeelTexture(variant){
+    const key='ripe-peel-'+variant;if(labelTextures.has(key))return labelTextures.get(key);
+    const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;const c=canvas.getContext('2d');
+    const base=c.createLinearGradient(0,0,512,0);base.addColorStop(0,'#846027');base.addColorStop(.1,'#e9b93c');base.addColorStop(.5,'#f5ce53');base.addColorStop(.9,'#dfae32');base.addColorStop(1,'#715020');c.fillStyle=base;c.fillRect(0,0,512,256);
+    const random=n=>{const v=Math.sin(n*127.1+(variant+1)*311.7)*43758.5453;return v-Math.floor(v);};
+    for(let i=0;i<110;i++){
+      const x=28+random(i*7)*456,y=12+random(i*7+1)*232,rx=2+random(i*7+2)*13,ry=2+random(i*7+3)*8,angle=random(i*7+4)*Math.PI;
+      c.fillStyle=i%4===0?'#795023':'#342319';c.beginPath();c.ellipse(x,y,rx,ry,angle,0,Math.PI*2);c.fill();
+      c.fillStyle='#21180f';c.beginPath();c.ellipse(x+rx*.15,y,rx*.63,ry*.66,angle,0,Math.PI*2);c.fill();
+    }
+    const texture=new T.CanvasTexture(canvas);texture.encoding=T.sRGBEncoding;labelTextures.set(key,texture);return texture;
+  }
+  function banana(parent,peeled=false,variant=0) {
     const g=new T.Group();parent.add(g);g.rotation.y=-.15;
     const curve=new T.QuadraticBezierCurve3(new T.Vector3(-1,.22,0),new T.Vector3(0,-.55,.06),new T.Vector3(1,.48,0));
     const geo=new T.TubeGeometry(curve,28,.23,10,false),positions=geo.attributes.position;
@@ -121,19 +133,10 @@
       const v=new T.Vector3().fromBufferAttribute(positions,i).sub(centre).multiplyScalar(radius);
       positions.setXYZ(i,centre.x+v.x,centre.y+v.y,centre.z+v.z);
     }
-    geo.computeVertexNormals();mesh(geo,peeled?0xffe7a0:0xf1c43f,0,0,0,g);
+    geo.computeVertexNormals();const skin=mesh(geo,peeled?0xffe7a0:0xffffff,0,0,0,g);if(!peeled){skin.material.map=ripePeelTexture(variant);skin.material.roughness=.8;skin.material.needsUpdate=true;}
     if(peeled)return g;
     const stem=box(.14,.3,.14,0x76602c,1,.63,0,g);stem.rotation.z=-.3;
     sphere(.09,0x675030,-1,.22,0,g).scale.set(1,.5,1);
-    if(!peeled) for(let i=0;i<24;i++) {
-      const t=.12+(i%12)/15,pt=curve.getPointAt(t),a=.3+(i%4)*.65;
-      const dot=sphere(.025+(i%3)*.012,0x594025,pt.x,pt.y+Math.cos(a)*.21,pt.z+Math.sin(a)*.21,g);
-      dot.scale.set(1,.4,1);
-    }
-    if(peeled) for(let i=0;i<3;i++) {
-      const a=(i-1)*1.1,stripCurve=new T.QuadraticBezierCurve3(new T.Vector3(.75,.35,0),new T.Vector3(.65,-.65,.3),new T.Vector3(Math.sin(a)*.9,-.55,.7));
-      const strip=mesh(new T.TubeGeometry(stripCurve,18,.1,6,false),0xe8bc39,0,0,0,g);strip.scale.z=.6;
-    }
     return g;
   }
   function pancake(x,y,z,parent=root,r=.72) {
@@ -179,7 +182,14 @@
     const rim=torus(.42,.05,0x9aaeb2,0,-.4,0,parent);rim.scale.z=.8;
     for(let i=0;i<5;i++)box(.65,.035,.035,0xb6c6c7,0,-.4,-.26+i*.13,parent);
   }
-  function spoon(parent){box(.13,.13,1.5,0x9c6b41,0,.2,.1,parent);const q=sphere(.25,0xb8864f,0,.2,-.7,parent);q.scale.set(1,.3,1.4);}
+  function balloonWhisk(parent){
+    disc(.12,.82,0x285c55,0,.59,0,parent);disc(.15,.13,0xa5b9be,0,.15,0,parent);disc(.13,.08,0xc9d9d7,0,1.04,0,parent);
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/6,point=(r,y)=>new T.Vector3(Math.cos(a)*r,y,Math.sin(a)*r);
+      const curve=new T.CatmullRomCurve3([point(0,.15),point(.34,-.13),point(.28,-.5),point(0,-.74),point(-.28,-.5),point(-.34,-.13),point(0,.15)]);
+      mesh(new T.TubeGeometry(curve,36,.023,6,false),0xbdced1,0,0,0,parent,{metalness:.55,roughness:.23});
+    }
+  }
   function measuringCup(parent,ml,batter=false,empty=false){
     mesh(new T.CylinderGeometry(.5,.42,1.1,32,1,true),0xbce5e8,0,.33,0,parent,{transparent:true,opacity:.37,side:T.DoubleSide});
     torus(.5,.035,0xc4e1df,0,.88,0,parent);disc(.42,.04,0xbcdfe0,0,-.2,0,parent);
@@ -206,7 +216,7 @@
     box(13,.42,6.8,0xc7ab82,0,-.23,0);box(13,.1,6.8,0xf0d7ad,0,.03,0);box(13,1.5,.14,0xe0ead7,0,.75,-3.1);
     for(let x=-6;x<=6;x++)box(.018,1.5,.16,0xc5d5c1,x,.75,-3.08);for(let y=.1;y<1.5;y+=.65)box(13,.018,.16,0xc5d5c1,0,y,-3.08);
     box(4.35,.12,3.2,0xb98a50,-3.1,.18,.4);box(4.2,.04,3.05,0xe3ba7c,-3.1,.27,.4);box(3.8,.09,3.2,0xd6cbb4,2.1,.16,.25);
-    if(step!==3)for(let i=0;i<3;i++)if(!batch.mix[i])packet(-4.8+i*1.35,.12,-2.2,.55);
+    if(step!==3)for(let i=0;i<batch.mix.length;i++)if(!batch.mix[i])packet(-4.8+i*1.35,.12,-2.2,.55);
   }
   function buildScene(){
     dispose();root=new T.Group();scene.add(root);items=[];glows=[];food={};hovered=null;kitchen();
@@ -216,7 +226,7 @@
       if(step===1)foodInBowl();
       for(let i=0;i<4;i++){
         if(step===1&&batch.inBowl[i])continue;
-        const g=new T.Group();root.add(g);g.position.copy(bananaSlot(i));g.scale.setScalar(.68);banana(g,batch.peeled[i]);
+        const g=new T.Group();root.add(g);g.position.copy(bananaSlot(i));g.scale.setScalar(.68);banana(g,batch.peeled[i],i);
         box(1.8,.025,1.1,0xf3dfae,g.position.x,.31,g.position.z);
         if(needs(`banana-${i}`))register(`banana-${i}`,g,step===1?bananaSlot(i,true):new T.Vector3(2.1,.8,.25),.7);
       }
@@ -225,14 +235,18 @@
     if(step===3){
       box(.7,1.1,.55,0xf5f2de,-4.9,.86,1.35);
       frontLabel(labelTexture('fresh-milk',[['FRESH',160,75],['MILK',280,105],['100 ml',425,60]],'#f3f5e9','#37758c'),.66,.97,-4.9,.87,1.64);
-      foodInBowl();for(let i=0;i<3;i++)if(!batch.mix[i]){const p=packet(-4.7+i*1.4,.3,-.65,.75);if(needs(`mix-${i}`))register(`mix-${i}`,p,new T.Vector3(1.1,1.2,.25),.55);}
-      if(needs('milk')){const g=new T.Group();root.add(g);g.position.set(-3,1,1.35);measuringCup(g,100);register('milk',g,new T.Vector3(1.45,1.65,.25));}
+      foodInBowl();for(let i=0;i<batch.mix.length;i++)if(!batch.mix[i]){const p=packet(-4.7+i*1.4,.3,-.65,.75);if(needs(`mix-${i}`))register(`mix-${i}`,p,new T.Vector3(1.1,1.2,.25),.55);}
+      {const g=new T.Group();root.add(g);g.position.set(-2.1,1,1.35);measuringCup(g,100);}
       food.stream=mesh(new T.CylinderGeometry(.045,.065,1,10),0xfff7e5,2.1,1.4,.25);food.stream.visible=false;
     }
     if(step===4){
-      foodInBowl();const g=new T.Group();root.add(g);g.position.copy(batch.stirs>0&&batch.stirs<3?new T.Vector3(2.1,1.32,.45):batch.stirs>=3?new T.Vector3(-4.8,.5,.6):new T.Vector3(-2.8,1.2,.6));g.rotation.x=batch.stirs>=3?0:-.6;spoon(g);if(needs('spoon'))register('spoon',g,new T.Vector3(2.1,1.32,.45));
+      foodInBowl();const g=new T.Group();root.add(g);
+      const working=batch.stirs>0&&(batch.stirs<3||batch.needsFinalStir);
+      g.position.copy(working?new T.Vector3(2.1,1.5,.25):batch.stirs>=3?new T.Vector3(-4.5,.72,.6):new T.Vector3(-2.8,1.1,.6));
+      g.rotation.z=batch.stirs>=3&&!batch.needsFinalStir?Math.PI/2:.14;
+      balloonWhisk(g);if(needs('whisk'))register('whisk',g,new T.Vector3(2.1,1.5,.25));
       // Optional milk has its own measured cup and animation, never an invisible adjustment.
-      if(batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<200){const g=new T.Group();root.add(g);g.position.set(-3,1,1.2);measuringCup(g,25);register('extra-milk',g,new T.Vector3(1.45,1.65,.25));food.stream=mesh(new T.CylinderGeometry(.045,.065,1,10),0xfff7e5,2.1,1.4,.25);food.stream.visible=false;}
+      if(batch.stirs>=3&&!batch.needsFinalStir&&batch.milkMl<recipe.reservedMilkMl){const g=new T.Group();root.add(g);g.position.set(-3,1,1.2);measuringCup(g,25);register('extra-milk',g,new T.Vector3(1.45,1.65,.25));food.stream=mesh(new T.CylinderGeometry(.045,.065,1,10),0xfff7e5,2.1,1.4,.25);food.stream.visible=false;}
       food.ribbon=mesh(new T.CylinderGeometry(.035,.055,.6,10),0xe8c789,2.1,1.3,.25);food.ribbon.visible=false;
     }
     if(step>=5&&step<=6){
